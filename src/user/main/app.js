@@ -37,31 +37,13 @@ io.on("connection", (socket) => {
   });
 });
 
-app.set("io", io);
+app.set("io", io);*/
 
-const adminRoute = require("../admin/routes/admin");
+const userRoute = require("../route/user");
 
-const clientRoute = require("../client/routes/client");
-const freelancerRoute = require("../freelancer/routes/freelancer");
+app.use(`/user`, userRoute);
 
-const assignmentRoute = require("../assignment/routes/assignment");
-const projectRoute = require("../project/routes/project");
-
-const auditLogRoute = require("../auditLog/routes/auditLog");
-const notificationRoute = require("../notification/routes/notification");
-
-app.use(`/admin`, adminRoute);
-
-app.use(`/client`, clientRoute);
-app.use(`/freelancer`, freelancerRoute);
-
-app.use(`/assignment`, assignmentRoute);
-app.use(`/project`, projectRoute);
-
-app.use(`/audit`, auditLogRoute);
-app.use(`/notification`, notificationRoute);
-
-app.use((err, req, res, next) => {
+/*app.use((err, req, res, next) => {
   if (err.code === "LIMIT_FILE_SIZE") {
     return res
       .status(413)
