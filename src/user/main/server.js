@@ -1,7 +1,7 @@
 const { server } = require('./app');
 const { connectDb } = require('./db');
 
-const port = process.env.PORT || 2810;
+const port = process.env.PORT || 3001;
 
 const startServer = async () => {
     try {

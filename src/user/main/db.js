@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 
 const options = {
-  // dbName: "eddva",
+  dbName: "muse_users",
   serverSelectionTimeoutMS: 5000,
   socketTimeoutMS: 45000,
   family: 4,
@@ -11,7 +11,7 @@ const options = {
 const connectDb = async () => {
   try {
     console.log("initiating database connection...");
-    await mongoose.connect(process.env.MONGO_URL, options);
+    await mongoose.connect(process.env.MONGO_USER, options);
     console.log("database connected :)");
 
     mongoose.connection.on("error", (err) => {
