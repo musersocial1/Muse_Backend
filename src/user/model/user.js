@@ -7,7 +7,13 @@ const userSchema = new Schema({
 
   lastName: { type: String, trim: true, required: true },
 
-  username: { type: String, unique: true, trim: true, sparse: true, required: true },
+  username: {
+    type: String,
+    unique: true,
+    trim: true,
+    sparse: true,
+    required: true,
+  },
 
   email: { type: String, unique: true, trim: true, required: true },
 
@@ -33,11 +39,16 @@ const userSchema = new Schema({
 
   interests: [{ type: String, trim: true }], // Array of strings for flexibility
 
-  //profilePicture: { type: String, default: process.env.DEFAULT_PROFILE_PIC },
+  profilePicture: { type: String, default: process.env.DEFAULT_PROFILE_PIC },
 
-  isVerified: { type: Boolean, default: false },
+  // isVerified: { type: Boolean, default: false },
 
-  isActive: { type: Boolean, default: true },
+  // isActive: { type: Boolean, default: true },
+
+  usernameChangeCount: {
+    type: Number,
+    default: 0,
+  },
 
   createdAt: { type: Date, default: Date.now },
 });
