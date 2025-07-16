@@ -13,65 +13,25 @@ const verifyServiceSid = process.env.TWILIO_VERIFY_SERVICE_SID;
 const client = twilio(accountSid, authToken);
 
 exports.sendVerificationCode = async (req, res) => {
-  try {
-    const { phoneNumber } = req.body;
-    if (!phoneNumber)
+  const { phoneNumber } = req.body;
+    if (!phoneNumber) {
       return res.status(400).json({ message: "Phone number is required." });
-
-    await client.verify.v2
-      .services(verifyServiceSid)
-      .verifications.create({ to: phoneNumber, channel: "sms" });
-
-    return res.status(200).json({ message: "Phone verification code sent." });
-  } catch (error) {
-    return res.status(500).json({
-      message: "Failed to send verification code.",
-      error: error.message,
-    });
-  }
-};
-
-exports.resendVerificationCode = async (req, res) => {
-  try {
-    const { phoneNumber } = req.body;
-    if (!phoneNumber)
-      return res.status(400).json({ message: "Phone number is required." });
-
-    await client.verify.v2
-      .services(verifyServiceSid)
-      .verifications.create({ to: phoneNumber, channel: "sms" });
-
-    return res.status(200).json({ message: "Phone verification code sent." });
-  } catch (error) {
-    return res.status(500).json({
-      message: "Failed to send verification code.",
-      error: error.message,
-    });
-  }
-};
-
-exports.sendWhatsAppVerificationCode = async (req, res) => {
-  try {
-    const { phoneNumber } = req.body;
-    if (!phoneNumber)
-      return res.status(400).json({ message: "Phone number is required." });
+    }
 
     await VerificationCode.deleteMany({ phoneNumber });
 
-    // 1. Generate a 6-digit OTP code (use your own generation logic if needed)
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-    // 2. WhatsApp API setup
-    const url = "https://graph.facebook.com/v19.0/764377226749149/messages"; // Replace with your phone number ID
+    const url = "https://graph.facebook.com/v22.0/764377226749149/messages";
     const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
 
     const payload = {
       messaging_product: "whatsapp",
-      to: phoneNumber.replace(/^\+/, ""), // Meta requires no "+"
+      to: phoneNumber.replace(/^\+/, ""),
       type: "template",
       template: {
-        name: "otp_code", // Your approved template name
+        name: "muse_otp",
         language: { code: "en_US" },
         components: [
           {
@@ -81,16 +41,113 @@ exports.sendWhatsAppVerificationCode = async (req, res) => {
           {
             type: "button",
             sub_type: "url",
-            index: 0, // 0 for first button, 1 for second, etc.
+            index: 0,
             parameters: [
-              { type: "text", text: "https://your-verification-link.com" },
+              { type: "text", text: "Muse Verification" },
             ],
           },
+          {
+            type: "button",
+            sub_type: "url",
+            index: 1,
+            parameters: [
+              { type: "text", text: "Copy Muse Code" }
+            ]
+          }
         ],
       },
     };
 
-    // 3. Send message
+    try {
+      await axios.post(url, payload, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+      });
+  
+      await VerificationCode.create({
+        phoneNumber,
+        code,
+        expiresAt,
+        used: false,
+      });
+  
+      return res
+        .status(200)
+        .json({ message: "WhatsApp verification code sent.", code });
+    } catch (waError) {
+      try {
+        await client.verify.v2
+          .services(verifyServiceSid)
+          .verifications.create({ to: phoneNumber, channel: "sms" });
+  
+        return res.status(200).json({ message: "Twilio verification code sent." });
+      } catch (smsError) {
+        return res.status(500).json({
+          message: "Failed to send code via WhatsApp and SMS.",
+          whatsapp: waError.response?.data || waError.message,
+          sms: smsError.message
+        });
+      }
+    }
+};
+
+exports.resendVerificationCode = async (req, res) => {
+  const { phoneNumber } = req.body;
+  if (!phoneNumber) {
+    return res.status(400).json({ message: "Phone number is required." });
+  }
+
+  const latestCode = await VerificationCode.findOne({ phoneNumber }).sort({ createdAt: -1 });
+  if (latestCode) {
+    const now = Date.now();
+    const sentTime = new Date(latestCode.createdAt).getTime();
+    if (now - sentTime < 60 * 1000) {
+      const secondsLeft = Math.ceil((60 * 1000 - (now - sentTime)) / 1000);
+      return res.status(429).json({
+        message: `Please wait ${secondsLeft}s before requesting another code.`,
+      });
+    }
+  }
+
+  await VerificationCode.deleteMany({ phoneNumber });
+
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+  const url = "https://graph.facebook.com/v22.0/764377226749149/messages";
+  const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
+
+  const payload = {
+    messaging_product: "whatsapp",
+    to: phoneNumber.replace(/^\+/, ""),
+    type: "template",
+    template: {
+      name: "muse_otp",
+      language: { code: "en_US" },
+      components: [
+        {
+          type: "body",
+          parameters: [{ type: "text", text: code }],
+        },
+        {
+          type: "button",
+          sub_type: "url",
+          index: 0,
+          parameters: [{ type: "text", text: "Muse Verification" }],
+        },
+        {
+          type: "button",
+          sub_type: "url",
+          index: 1,
+          parameters: [{ type: "text", text: "Copy Muse Code" }]
+        }
+      ],
+    },
+  };
+
+  try {
     await axios.post(url, payload, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -105,14 +162,24 @@ exports.sendWhatsAppVerificationCode = async (req, res) => {
       used: false,
     });
 
-    return res
-      .status(200)
-      .json({ message: "WhatsApp verification code sent.", code });
-  } catch (error) {
-    return res.status(500).json({
-      message: "Failed to send WhatsApp verification code.",
-      error: error.response?.data || error.message,
+    return res.status(200).json({
+      message: "WhatsApp verification code resent.",
+      code,
     });
+  } catch (waError) {
+    try {
+      await client.verify.v2
+        .services(verifyServiceSid)
+        .verifications.create({ to: phoneNumber, channel: "sms" });
+
+      return res.status(200).json({ message: "Twilio SMS verification code resent." });
+    } catch (smsError) {
+      return res.status(500).json({
+        message: "Failed to resend code via WhatsApp and SMS.",
+        whatsapp: waError.response?.data || waError.message,
+        sms: smsError.message,
+      });
+    }
   }
 };
 
@@ -120,22 +187,38 @@ exports.verifyPhoneCode = async (req, res) => {
   try {
     const { phoneNumber, code } = req.body;
     if (!phoneNumber || !code) {
-      return res
-        .status(400)
-        .json({ message: "Phone number and code are required." });
+      return res.status(400).json({ message: "Phone number and code are required." });
     }
 
-    const verificationCheck = await client.verify.v2
-      .services(verifyServiceSid)
-      .verificationChecks.create({ to: phoneNumber, code });
+    const verification = await VerificationCode.findOne({
+      phoneNumber,
+      code,
+      expiresAt: { $gt: new Date() },
+      used: false,
+    });
 
-    if (verificationCheck.status === "approved") {
-      //await User.findOneAndUpdate({ phoneNumber }, { isPhoneVerified: true });
+    if (verification) {
+      verification.used = true;
+      await verification.save();
 
-      return res.status(200).json({ message: "Phone number verified!" });
-    } else {
-      return res.status(400).json({ message: "Incorrect verification code." });
+      return res.status(200).json({ message: "Phone number verified! (WhatsApp)" });
     }
+
+    try {
+      const verificationCheck = await client.verify.v2
+        .services(verifyServiceSid)
+        .verificationChecks.create({ to: phoneNumber, code });
+
+      if (verificationCheck.status === "approved") {
+
+        return res.status(200).json({ message: "Phone number verified! (SMS)" });
+      } else {
+        return res.status(400).json({ message: "Incorrect verification code." });
+      }
+    } catch (twilioError) {
+      return res.status(400).json({ message: "Incorrect or expired verification code." });
+    }
+
   } catch (error) {
     return res
       .status(500)
