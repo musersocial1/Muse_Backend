@@ -3,6 +3,7 @@ const router = express.Router();
 const {
   sendVerificationCode,
   resendVerificationCode,
+  sendWhatsAppVerificationCode,
   verifyPhoneCode,
   createAccount,
   login,
@@ -19,6 +20,8 @@ const { authenticate } = require("../middleware/auth");
 router.post("/send-code", sendVerificationCode);
 
 router.post("/resend-code", resendVerificationCode);
+
+router.post("/send-whatsapp-code", sendWhatsAppVerificationCode);
 
 router.post("/verify-code", verifyPhoneCode);
 

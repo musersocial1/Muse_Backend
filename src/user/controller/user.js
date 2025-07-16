@@ -1,6 +1,7 @@
 const twilio = require("twilio");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
+const axios = require("axios");
 const crypto = require("crypto");
 const User = require("../model/user");
 const VerificationCode = require("../model/code");
@@ -45,6 +46,64 @@ exports.resendVerificationCode = async (req, res) => {
     return res.status(500).json({
       message: "Failed to send verification code.",
       error: error.message,
+    });
+  }
+};
+
+exports.sendWhatsAppVerificationCode = async (req, res) => {
+  try {
+    const { phoneNumber } = req.body;
+    if (!phoneNumber)
+      return res.status(400).json({ message: "Phone number is required." });
+
+    await VerificationCode.deleteMany({ phoneNumber });
+
+    // 1. Generate a 6-digit OTP code (use your own generation logic if needed)
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+    // 2. WhatsApp API setup
+    const url = "https://graph.facebook.com/v19.0/764377226749149/messages"; // Replace with your phone number ID
+    const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
+
+    const payload = {
+      messaging_product: "whatsapp",
+      to: phoneNumber.replace(/^\+/, ""), // Meta requires no "+"
+      type: "template",
+      template: {
+        name: "otp_code", // Your approved template name
+        language: { code: "en_US" },
+        components: [
+          {
+            type: "body",
+            parameters: [{ type: "text", text: code }],
+          },
+        ],
+      },
+    };
+
+    // 3. Send message
+    await axios.post(url, payload, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    await VerificationCode.create({
+      phoneNumber,
+      code,
+      expiresAt,
+      used: false,
+    });
+
+    return res
+      .status(200)
+      .json({ message: "WhatsApp verification code sent.", code });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Failed to send WhatsApp verification code.",
+      error: error.response?.data || error.message,
     });
   }
 };
