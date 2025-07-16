@@ -78,6 +78,14 @@ exports.sendWhatsAppVerificationCode = async (req, res) => {
             type: "body",
             parameters: [{ type: "text", text: code }],
           },
+          {
+            type: "button",
+            sub_type: "url",
+            index: 0, // 0 for first button, 1 for second, etc.
+            parameters: [
+              { type: "text", text: "https://your-verification-link.com" },
+            ],
+          },
         ],
       },
     };
