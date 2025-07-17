@@ -13,6 +13,70 @@ const verifyServiceSid = process.env.TWILIO_VERIFY_SERVICE_SID;
 const client = twilio(accountSid, authToken);
 
 exports.sendVerificationCode = async (req, res) => {
+  try {
+    const { phoneNumber } = req.body;
+    if (!phoneNumber)
+      return res.status(400).json({ message: "Phone number is required." });
+
+    await client.verify.v2
+      .services(verifyServiceSid)
+      .verifications.create({ to: phoneNumber, channel: "sms" });
+
+    return res.status(200).json({ message: "Phone verification code sent." });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Failed to send verification code.",
+      error: error.message,
+    });
+  }
+};
+
+exports.resendVerificationCode = async (req, res) => {
+  try {
+    const { phoneNumber } = req.body;
+    if (!phoneNumber)
+      return res.status(400).json({ message: "Phone number is required." });
+
+    await client.verify.v2
+      .services(verifyServiceSid)
+      .verifications.create({ to: phoneNumber, channel: "sms" });
+
+    return res.status(200).json({ message: "Phone verification code resent." });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Failed to send verification code.",
+      error: error.message,
+    });
+  }
+};
+
+exports.verifyPhoneCode = async (req, res) => {
+  try {
+    const { phoneNumber, code } = req.body;
+    if (!phoneNumber || !code) {
+      return res
+        .status(400)
+        .json({ message: "Phone number and code are required." });
+    }
+
+    const verificationCheck = await client.verify.v2
+      .services(verifyServiceSid)
+      .verificationChecks.create({ to: phoneNumber, code });
+
+    if (verificationCheck.status === "approved") {
+
+      return res.status(200).json({ message: "Phone number verified!" });
+    } else {
+      return res.status(400).json({ message: "Incorrect verification code." });
+    }
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ message: "Verification failed.", error: error.message });
+  }
+};
+
+/*exports.sendVerificationCode = async (req, res) => {
   const { phoneNumber } = req.body;
     if (!phoneNumber) {
       return res.status(400).json({ message: "Phone number is required." });
@@ -224,7 +288,7 @@ exports.verifyPhoneCode = async (req, res) => {
       .status(500)
       .json({ message: "Verification failed.", error: error.message });
   }
-};
+};*/
 
 exports.createAccount = async (req, res) => {
   try {
@@ -360,7 +424,7 @@ exports.login = async (req, res) => {
 
     //const code = Math.floor(100000 + Math.random() * 900000).toString();
     const code = crypto.randomInt(100000, 999999).toString(); // secure 6-digit code
-    const expiresAt = Date.now() + 10 * 60 * 1000; // expires in 10 minutes
+    const expiresAt = Date.now() + 10 * 60 * 1000;
 
     await VerificationCode.create({ email, code, expiresAt });
 
@@ -459,6 +523,7 @@ exports.verifyLogin = async (req, res) => {
     return res.status(500).json({ error: err.message });
   }
 };
+
 
 // SETTINGS
 exports.getUserProfile = async (req, res) => {
