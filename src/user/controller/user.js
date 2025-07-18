@@ -574,12 +574,6 @@ exports.requestChangeEmail = async (req, res) => {
       { upsert: true, new: true }
     );
 
-    await VerificationCode.create({
-      email: newEmail.toLowerCase(),
-      code,
-      expiresAt,
-    });
-
     return res.status(200).json({
       message: "Verification code sent to new email.",
       newEmail,
@@ -744,19 +738,6 @@ exports.confirmChangePassword = async (req, res) => {
       return res
         .status(400)
         .json({ message: "New password and code are required." });
-    }
-
-    const validatePassword = (password) => {
-      return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_\-+={}[\]|:;"'<>,.?/~`])[A-Za-z\d!@#$%^&*()_\-+={}[\]|:;"'<>,.?/~`]{8,}$/.test(
-        password
-      );
-    };
-
-    if (!validatePassword(newPassword)) {
-      return res.status(400).json({
-        error:
-          "Password must be at least 8 characters, include an uppercase letter, a lowercase letter, a number, and a special character.",
-      });
     }
 
     const user = await User.findById(userId);

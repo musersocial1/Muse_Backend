@@ -13,6 +13,8 @@ const {
   requestChangeEmail,
   confirmChangeEmail,
   changeUsername,
+  requestChangePassword,
+  confirmChangePassword
 } = require("../controller/user");
 const { authenticate } = require("../middleware/auth");
 
@@ -33,10 +35,14 @@ router.post("/verify-login", verifyLogin);
 // SETTINGS
 router.get("/me", authenticate, getUserProfile);
 
-router.post("/request", authenticate, requestChangeEmail);
+router.post("/change-email", authenticate, requestChangeEmail);
 
-router.post("/confirm", authenticate, confirmChangeEmail);
+router.post("/confirm-email", authenticate, confirmChangeEmail);
 
 router.patch("/username", authenticate, changeUsername);
+
+router.post("/change-password", authenticate, requestChangePassword);
+
+router.post("/confirm-password", authenticate, confirmChangePassword);
 
 module.exports = router;
