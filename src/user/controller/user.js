@@ -1,7 +1,7 @@
 const twilio = require("twilio");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
-const axios = require("axios");
+//const axios = require("axios");
 const crypto = require("crypto");
 const User = require("../model/user");
 const VerificationCode = require("../model/code");
@@ -64,7 +64,6 @@ exports.verifyPhoneCode = async (req, res) => {
       .verificationChecks.create({ to: phoneNumber, code });
 
     if (verificationCheck.status === "approved") {
-
       return res.status(200).json({ message: "Phone number verified!" });
     } else {
       return res.status(400).json({ message: "Incorrect verification code." });
@@ -524,7 +523,6 @@ exports.verifyLogin = async (req, res) => {
   }
 };
 
-
 // SETTINGS
 exports.getUserProfile = async (req, res) => {
   try {
@@ -549,6 +547,16 @@ exports.requestChangeEmail = async (req, res) => {
       return res.status(400).json({ message: "New email is required." });
     }
 
+    const validateEmail = (email) => {
+      const regex =
+        /^[^\s@]+@[^\s@]+\.(com|net|org|edu|gov|mil|biz|info|mobi|name|aero|jobs|museum|co\.[a-z]{2}|[a-z]{2})$/i;
+      return regex.test(email);
+    };
+
+    if (!validateEmail(newEmail)) {
+      return res.status(400).json({ error: "Invalid email format." });
+    }
+
     const emailExists = await User.findOne({ email: newEmail.toLowerCase() });
     if (emailExists) {
       return res.status(409).json({ message: "Email already in use." });
@@ -560,13 +568,17 @@ exports.requestChangeEmail = async (req, res) => {
     const expiresAt = Date.now() + 10 * 60 * 1000;
 
     // Save or update code with association to user and new email
-    // await VerificationCode.findOneAndUpdate(
-    //   { user: userId, email: newEmail.toLowerCase() },
-    //   { code, expiresAt },
-    //   { upsert: true, new: true }
-    // );
+    await VerificationCode.findOneAndUpdate(
+      { user: userId, email: newEmail.toLowerCase() },
+      { code, expiresAt },
+      { upsert: true, new: true }
+    );
 
-    await VerificationCode.create({ email, code, expiresAt });
+    await VerificationCode.create({
+      email: newEmail.toLowerCase(),
+      code,
+      expiresAt,
+    });
 
     return res.status(200).json({
       message: "Verification code sent to new email.",
@@ -659,5 +671,116 @@ exports.changeUsername = async (req, res) => {
     return res
       .status(500)
       .json({ message: "Failed to change username.", error: error.message });
+  }
+};
+
+// COMMUNITIES AND SUBSCRIPTION INFO controller functions
+
+exports.requestChangePassword = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { oldPassword, newPassword } = req.body;
+
+    if (!oldPassword || !newPassword) {
+      return res
+        .status(400)
+        .json({ message: "Old and new password are required." });
+    }
+
+    const validatePassword = (password) => {
+      return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_\-+={}[\]|:;"'<>,.?/~`])[A-Za-z\d!@#$%^&*()_\-+={}[\]|:;"'<>,.?/~`]{8,}$/.test(
+        password
+      );
+    };
+
+    if (!validatePassword(newPassword)) {
+      return res.status(400).json({
+        error:
+          "Password must be at least 8 characters, include an uppercase letter, a lowercase letter, a number, and a special character.",
+      });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: "User not found." });
+
+    const isMatch = await bcrypt.compare(oldPassword, user.password);
+    if (!isMatch)
+      return res.status(401).json({ message: "Old password is incorrect." });
+
+    await VerificationCode.deleteMany({ email: user.email });
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+    await VerificationCode.create({
+      user: user._id,
+      email: user.email,
+      code,
+      expiresAt,
+    });
+
+    return res.status(200).json({
+      message:
+        "OTP code generated. Send this code to the user's email to continue.",
+      email: user.email,
+      code,
+      expiresAt,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      message: "Failed to process password change.",
+      error: error.message,
+    });
+  }
+};
+
+exports.confirmChangePassword = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { newPassword, code } = req.body;
+
+    if (!newPassword || !code) {
+      return res
+        .status(400)
+        .json({ message: "New password and code are required." });
+    }
+
+    const validatePassword = (password) => {
+      return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_\-+={}[\]|:;"'<>,.?/~`])[A-Za-z\d!@#$%^&*()_\-+={}[\]|:;"'<>,.?/~`]{8,}$/.test(
+        password
+      );
+    };
+
+    if (!validatePassword(newPassword)) {
+      return res.status(400).json({
+        error:
+          "Password must be at least 8 characters, include an uppercase letter, a lowercase letter, a number, and a special character.",
+      });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: "User not found." });
+
+    const verification = await VerificationCode.findOne({
+      user: user._id,
+      email: user.email,
+      code,
+      expiresAt: { $gt: new Date() },
+    });
+
+    if (!verification) {
+      return res.status(400).json({ message: "Invalid or expired OTP code." });
+    }
+
+    user.password = newPassword;
+    await user.save();
+
+    return res.status(200).json({ message: "Password changed successfully." });
+  } catch (error) {
+    console.error(error);
+    return res
+      .status(500)
+      .json({ message: "Failed to change password.", error: error.message });
   }
 };
