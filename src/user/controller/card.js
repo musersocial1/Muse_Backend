@@ -32,34 +32,39 @@ exports.addCard = async (req, res) => {
 
     res.status(201).json({ message: "Card added.", card });
   } catch (err) {
-    res.status(500).json({ message: "Failed to add card.", error: err.message });
+    res
+      .status(500)
+      .json({ message: "Failed to add card.", error: err.message });
   }
 };
 
 exports.getCards = async (req, res) => {
-    try {
-      const userId = req.user.id;
-      const cards = await Card.find({ user: userId }).select("-__v");
-      res.json({ cards });
-    } catch (err) {
-      res.status(500).json({ message: "Failed to fetch cards.", error: err.message });
-    }
+  try {
+    const userId = req.user.id;
+    const cards = await Card.find({ user: userId }).select("-__v");
+    res.json({ cards });
+  } catch (err) {
+    res
+      .status(500)
+      .json({ message: "Failed to fetch cards.", error: err.message });
+  }
 };
 
 exports.deleteCard = async (req, res) => {
-    try {
-      const userId = req.user.id;
-      const { id } = req.params;
-      const card = await Card.findOne({ _id: id, user: userId });
-      if (!card) return res.status(404).json({ message: "Card not found." });
-  
-      await stripe.paymentMethods.detach(card.paymentMethodId);
-  
-      await card.deleteOne();
-  
-      res.json({ message: "Card deleted." });
-    } catch (err) {
-      res.status(500).json({ message: "Failed to delete card.", error: err.message });
-    }
+  try {
+    const userId = req.user.id;
+    const { id } = req.params;
+    const card = await Card.findOne({ _id: id, user: userId });
+    if (!card) return res.status(404).json({ message: "Card not found." });
+
+    await stripe.paymentMethods.detach(card.paymentMethodId);
+
+    await card.deleteOne();
+
+    res.json({ message: "Card deleted." });
+  } catch (err) {
+    res
+      .status(500)
+      .json({ message: "Failed to delete card.", error: err.message });
+  }
 };
-  

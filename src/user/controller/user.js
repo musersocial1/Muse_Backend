@@ -433,7 +433,7 @@ exports.login = async (req, res) => {
     const code = crypto.randomInt(100000, 999999).toString(); // secure 6-digit code
     const expiresAt = Date.now() + 10 * 60 * 1000;
 
-    await VerificationCode.create({ email, code, expiresAt });
+    await VerificationCode.create({ user: user._id, email, code, expiresAt });
 
     return res.status(200).json({
       message: "Email verification code sent.",
@@ -453,6 +453,9 @@ exports.resendCode = async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: "Email is required." });
+
+    const user = await User.findOne({ email: email.toLowerCase() });
+    if (!user) return res.status(404).json({ error: "User not found." });
 
     // Check for recent (unexpired) code sent in the last 60s
     const existingCode = await VerificationCode.findOne({ email }).sort({
@@ -474,7 +477,8 @@ exports.resendCode = async (req, res) => {
 
     const code = crypto.randomInt(100000, 999999).toString();
     const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
-    await VerificationCode.create({ email, code, expiresAt });
+
+    await VerificationCode.create({ user: user._id, email, code, expiresAt });
 
     return res.status(200).json({
       message: "Email verification code resent.",
