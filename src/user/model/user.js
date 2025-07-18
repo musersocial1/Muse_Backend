@@ -4,9 +4,7 @@ const { Schema } = mongoose;
 
 const userSchema = new Schema({
   firstName: { type: String, trim: true, required: true },
-
   lastName: { type: String, trim: true, required: true },
-
   username: {
     type: String,
     unique: true,
@@ -14,42 +12,30 @@ const userSchema = new Schema({
     sparse: true,
     required: true,
   },
-
   email: { type: String, unique: true, trim: true, required: true },
-
   password: { type: String, required: true },
-
   phoneNumber: { type: String, required: true, trim: true },
-
   isPhoneVerified: { type: Boolean, default: false },
-
   dateOfBirth: { type: Date, required: true },
-
   accountType: {
     type: String,
     enum: ["join_community", "create_community"],
     required: true,
   },
-
   gender: {
     type: String,
     enum: ["male", "female", "prefer_not_to_say"],
     default: "prefer_not_to_say",
   },
-
   interests: [{ type: String, trim: true }], // Array of strings for flexibility
-
   profilePicture: { type: String, default: process.env.DEFAULT_PROFILE_PIC },
-
   // isVerified: { type: Boolean, default: false },
-
   // isActive: { type: Boolean, default: true },
-
   usernameChangeCount: {
     type: Number,
     default: 0,
   },
-
+  stripeCustomerId: { type: String, trim: true },
   createdAt: { type: Date, default: Date.now },
 });
 

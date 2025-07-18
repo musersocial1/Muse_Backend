@@ -40,8 +40,10 @@ io.on("connection", (socket) => {
 app.set("io", io);*/
 
 const userRoute = require("../route/user");
+const cardRoute = require("../route/card");
 
 app.use(`/user`, userRoute);
+app.use(`/card`, cardRoute);
 
 /*app.use((err, req, res, next) => {
   if (err.code === "LIMIT_FILE_SIZE") {

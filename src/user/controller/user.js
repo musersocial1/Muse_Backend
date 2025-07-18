@@ -5,6 +5,7 @@ const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 const User = require("../model/user");
 const VerificationCode = require("../model/code");
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
@@ -365,6 +366,12 @@ exports.createAccount = async (req, res) => {
       return res.status(409).json({ error: "Phone number already in use." });
     }
 
+    const stripeCustomer = await stripe.customers.create({
+      email: email.toLowerCase(),
+      name: `${firstName} ${lastName}`,
+      phone: phoneNumber,
+    });
+
     const user = new User({
       firstName,
       lastName,
@@ -377,6 +384,7 @@ exports.createAccount = async (req, res) => {
       interests,
       phoneNumber,
       isPhoneVerified: true,
+      stripeCustomerId: stripeCustomer.id,
     });
 
     await user.save();
