@@ -10,6 +10,8 @@ const RateLimit = require("../model/rateLimit");
 const VerificationCode = require("../model/code");
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
+const TEST_NUMBERS = process.env.DEV_TEST_NUMBERS.split(",");
+
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
 const verifyServiceSid = process.env.TWILIO_VERIFY_SERVICE_SID;
@@ -62,6 +64,22 @@ exports.sendVerificationCode = async (req, res) => {
       await record.save();
     }
 
+    if (TEST_NUMBERS.includes(phoneNumber)) {
+      console.log(`[TEST NUMBER] Simulated OTP sent to ${phoneNumber}`);
+      return res.status(200).json({
+        message: "Simulated verification code sent (test mode).",
+        devCode: "123456",
+      });
+    }
+
+    if (process.env.NODE_ENV !== "production") {
+      console.log(`[DEV MODE] Skipping real Twilio SMS to ${phoneNumber}`);
+      return res.status(200).json({
+        message: "Dev mode: Verification code not sent via Twilio.",
+        devCode: "123456",
+      });
+    }
+
     await client.verify.v2
       .services(verifyServiceSid)
       .verifications.create({ to: phoneNumber, channel: "sms" });
@@ -111,6 +129,19 @@ exports.verifyPhoneCode = async (req, res) => {
       return res
         .status(400)
         .json({ message: "Phone number and code are required." });
+    }
+
+    const isDev = process.env.NODE_ENV !== "production";
+    const testCode = "123456";
+
+    if (isDev && TEST_NUMBERS.includes(phoneNumber)) {
+      if (code === testCode) {
+        return res
+          .status(200)
+          .json({ message: "Phone number verified (test mode)." });
+      } else {
+        return res.status(400).json({ message: "Incorrect code (test mode)." });
+      }
     }
 
     const verificationCheck = await client.verify.v2
