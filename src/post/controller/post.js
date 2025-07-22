@@ -1,13 +1,15 @@
-const AWS = require("aws-sdk");
+const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
+const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 const { v4: uuidv4 } = require("uuid");
 const Post = require("../model/post");
 const Comment = require("../model/comment");
 
-const s3 = new AWS.S3({
+const s3 = new S3Client({
   region: process.env.AWS_REGION,
-  accessKeyId: process.env.AWS_ACCESS_KEY,
-  secretAccessKey: process.env.AWS_SECRET_KEY,
-  signatureVersion: "v4",
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY,
+    secretAccessKey: process.env.AWS_SECRET_KEY,
+  },
 });
 
 exports.generatePostUploadUrl = async (req, res) => {
@@ -15,15 +17,13 @@ exports.generatePostUploadUrl = async (req, res) => {
     const fileExt = req.query.fileType || "jpg"; // from frontend: .jpg, .png, etc.
     const key = `posts/${uuidv4()}.${fileExt}`;
 
-    const params = {
+    const params = new PutObjectCommand({
       Bucket: process.env.AWS_BUCKET_NAME,
       Key: key,
-      Expires: 60, // 60 seconds to upload
       ContentType: `image/${fileExt}`,
-      ACL: "private",
-    };
+    });
 
-    const uploadURL = await s3.getSignedUrlPromise("putObject", params);
+    const uploadURL = await getSignedUrl(s3, params, { expiresIn: 60 });
 
     res.status(200).json({
       success: true,
@@ -35,7 +35,11 @@ exports.generatePostUploadUrl = async (req, res) => {
     console.error("S3 Signed URL Error:", err);
     res
       .status(500)
-      .json({ success: false, message: "Failed to generate signed URL." });
+      .json({
+        success: false,
+        message: "Failed to generate signed URL.",
+        detail: err.message,
+      });
   }
 };
 
@@ -355,12 +359,10 @@ exports.updateComment = async (req, res) => {
     }
 
     if (comment.user.toString() !== userId) {
-      return res
-        .status(403)
-        .json({
-          success: false,
-          message: "Unauthorized to update this comment.",
-        });
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized to update this comment.",
+      });
     }
 
     if (text !== undefined) comment.text = text;
