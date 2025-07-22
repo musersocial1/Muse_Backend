@@ -14,9 +14,9 @@ const userSchema = new Schema({
   },
   email: { type: String, unique: true, trim: true, required: true },
   password: { type: String, required: true },
-  phoneNumber: { type: String, required: true, trim: true },
+  phoneNumber: { type: String, trim: true },
   isPhoneVerified: { type: Boolean, default: false },
-  dateOfBirth: { type: Date, required: true },
+  dateOfBirth: { type: Date },
   accountType: {
     type: String,
     enum: ["join_community", "create_community"],
@@ -40,6 +40,7 @@ const userSchema = new Schema({
     default: 0,
   },
   stripeCustomerId: { type: String, trim: true },
+  profileCompleted: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
 });
 

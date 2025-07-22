@@ -1,10 +1,12 @@
 const twilio = require("twilio");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
-const axios = require("axios");
+const rateLimitStore = new Map();
+//const axios = require("axios");
 const { OAuth2Client } = require("google-auth-library");
 const crypto = require("crypto");
 const User = require("../model/user");
+const RateLimit = require("../model/rateLimit");
 const VerificationCode = require("../model/code");
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
@@ -22,12 +24,60 @@ exports.sendVerificationCode = async (req, res) => {
     if (!phoneNumber)
       return res.status(400).json({ message: "Phone number is required." });
 
+    const now = new Date();
+    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+    const oneMinuteAgo = new Date(now.getTime() - 60 * 1000);
+
+    let record = await RateLimit.findOne({ phoneNumber });
+    if (!record) {
+      record = await RateLimit.create({ phoneNumber, requests: [now] });
+    } else {
+      record.requests = record.requests.filter((date) => date > oneHourAgo);
+
+      const requestsLastMinute = record.requests.filter(
+        (d) => d > oneMinuteAgo
+      );
+      if (requestsLastMinute.length >= 1) {
+        const lastRequestTime = requestsLastMinute[0].getTime();
+        const secondsPassed = Math.floor((Date.now() - lastRequestTime) / 1000);
+        const secondsLeft = 60 - secondsPassed;
+
+        return res.status(429).json({
+          message: `Please wait ${secondsLeft} seconds before trying again.`,
+        });
+      }
+
+      if (record.requests.length >= 5) {
+        const firstRequestTime = record.requests[0].getTime();
+        const oneHour = 60 * 60 * 1000;
+        const timePassed = Date.now() - firstRequestTime;
+        const minutesLeft = Math.ceil((oneHour - timePassed) / (60 * 1000));
+
+        return res.status(429).json({
+          message: `Hourly limit reached. Please wait ${minutesLeft} minute(s) before trying again.`,
+        });
+      }
+
+      record.requests.push(now);
+      await record.save();
+    }
+
     await client.verify.v2
       .services(verifyServiceSid)
       .verifications.create({ to: phoneNumber, channel: "sms" });
 
     return res.status(200).json({ message: "Phone verification code sent." });
   } catch (error) {
+    if (error.code === 60200) {
+      return res.status(400).json({ message: "Invalid phone number format." });
+    }
+
+    if (error.code === 20429) {
+      return res.status(429).json({
+        message: "You're sending requests too fast. Try again later.",
+      });
+    }
+
     return res.status(500).json({
       message: "Failed to send verification code.",
       error: error.message,
@@ -35,7 +85,7 @@ exports.sendVerificationCode = async (req, res) => {
   }
 };
 
-exports.resendVerificationCode = async (req, res) => {
+/*exports.resendVerificationCode = async (req, res) => {
   try {
     const { phoneNumber } = req.body;
     if (!phoneNumber)
@@ -52,7 +102,7 @@ exports.resendVerificationCode = async (req, res) => {
       error: error.message,
     });
   }
-};
+};*/
 
 exports.verifyPhoneCode = async (req, res) => {
   try {
@@ -395,8 +445,7 @@ exports.createAccount = async (req, res) => {
     const generateToken = (user) => {
       return jwt.sign(
         { id: user._id, username: user.username, email: user.email },
-        process.env.JWT_SECRET,
-        { expiresIn: "7d" }
+        process.env.JWT_SECRET
       );
     };
 
@@ -427,7 +476,10 @@ exports.googleAuth = async (req, res) => {
     const payload = ticket.getPayload();
     const { email, given_name, family_name, sub, picture } = payload;
 
-    const peopleRes = await axios.get(
+    const firstName = given_name;
+    const lastName = family_name;
+
+    /*const peopleRes = await axios.get(
       "https://people.googleapis.com/v1/people/me?personFields=genders,birthdays,phoneNumbers",
       {
         headers: {
@@ -447,7 +499,7 @@ exports.googleAuth = async (req, res) => {
       ? new Date(
           `${birthdayObj.year || 2000}-${birthdayObj.month}-${birthdayObj.day}`
         )
-      : undefined;
+      : undefined;*/
 
     let user = await User.findOne({ email });
     if (user) {
@@ -469,9 +521,16 @@ exports.googleAuth = async (req, res) => {
     if (user) {
       const jwtToken = jwt.sign(
         { id: user._id, username: user.username, email: user.email },
-        process.env.JWT_SECRET,
-        { expiresIn: "7d" }
+        process.env.JWT_SECRET
       );
+
+      const isProfileIncomplete =
+        !user.phoneNumber ||
+        !user.gender ||
+        !user.dateOfBirth ||
+        !user.accountType ||
+        !user.interests ||
+        !user.profileCompleted;
 
       /*const refreshToken = jwt.sign(
         { id: user._id, role: user.role },
@@ -491,6 +550,7 @@ exports.googleAuth = async (req, res) => {
         user,
         jwtToken,
         isGoogleUser: user.signUpMode === "google",
+        profileCompleted: !isProfileIncomplete,
       });
     }
 
@@ -501,26 +561,31 @@ exports.googleAuth = async (req, res) => {
       return res.status(409).json({ message: "email already exists" });
     }
 
+    const stripeCustomer = await stripe.customers.create({
+      email: email.toLowerCase(),
+      name: `${firstName} ${lastName}`,
+    });
+
     user = new User({
-      firstName: given_name,
-      lastName: family_name,
+      firstName,
+      lastName,
       username,
       email,
       password: sub,
       signUpMode: "google",
       profilePicture: picture,
-      gender,
+      stripeCustomerId: stripeCustomer.id,
+      /*gender,
       dateOfBirth,
       phoneNumber,
-      isPhoneVerified: true,
+      isPhoneVerified: true,*/
     });
 
     await user.save();
 
     const jwtToken = jwt.sign(
       { id: user._id, username: user.username, email: user.email },
-      process.env.JWT_SECRET,
-      { expiresIn: "7d" }
+      process.env.JWT_SECRET
     );
 
     /*const refreshToken = jwt.sign(
@@ -541,12 +606,52 @@ exports.googleAuth = async (req, res) => {
       user,
       jwtToken,
       isGoogleUser: user.signUpMode === "google",
+      profileCompleted: !isProfileIncomplete,
     });
   } catch (error) {
     console.error(error);
     return res
       .status(400)
       .json({ error: "google signup/signin failed", details: error.message });
+  }
+};
+
+exports.completeProfile = async (req, res) => {
+  const userId = req.user.id;
+  const { phoneNumber, gender, dateOfBirth, accountType, interests } = req.body;
+
+  try {
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found." });
+    }
+
+    if (user.signUpMode !== "google") {
+      return res
+        .status(403)
+        .json({ error: "Not allowed for non-Google users." });
+    }
+
+    user.phoneNumber = phoneNumber || user.phoneNumber;
+    user.gender = gender || user.gender;
+    user.dateOfBirth = dateOfBirth || user.dateOfBirth;
+    user.accountType = accountType || user.accountType;
+    user.interests = interests || user.interests;
+    user.isPhoneVerified = true;
+    user.profileCompleted = true;
+
+    await user.save();
+
+    return res.status(200).json({
+      message: "Profile completed successfully.",
+      user,
+    });
+  } catch (error) {
+    console.error("Profile completion error:", error);
+    return res
+      .status(500)
+      .json({ error: "Server error", details: error.message });
   }
 };
 
@@ -663,8 +768,7 @@ exports.verifyLogin = async (req, res) => {
 
     const jwtToken = jwt.sign(
       { id: user._id, username: user.username, email: user.email },
-      process.env.JWT_SECRET,
-      { expiresIn: "7d" }
+      process.env.JWT_SECRET
     );
 
     return res

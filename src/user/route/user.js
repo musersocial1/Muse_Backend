@@ -2,10 +2,11 @@ const express = require("express");
 const router = express.Router();
 const {
   sendVerificationCode,
-  resendVerificationCode,
+  //resendVerificationCode,
   verifyPhoneCode,
   createAccount,
   googleAuth,
+  completeProfile,
   login,
   resendCode,
   verifyLogin,
@@ -21,13 +22,15 @@ const { authenticate } = require("../middleware/auth");
 
 router.post("/send-code", sendVerificationCode);
 
-router.post("/resend-code", resendVerificationCode);
+router.post("/resend-code", sendVerificationCode);
 
 router.post("/verify-code", verifyPhoneCode);
 
 router.post("/signup", createAccount);
 
 router.post("/google", googleAuth);
+
+router.put("/complete-profile", authenticate, completeProfile);
 
 router.post("/signin", login);
 
