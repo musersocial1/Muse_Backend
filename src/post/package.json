@@ -1,10 +1,10 @@
 {
   "name": "muse-post-service",
   "version": "1.0.0",
-  "main": "src/main/server.js",
+  "main": "main/server.js",
   "scripts": {
-    "start": "node src/main/server.js",
-    "dev": "nodemon src/main/server.js"
+    "start": "node main/server.js",
+    "dev": "nodemon main/server.js"
   },
   "dependencies": {
     "aws-sdk": "^2.1692.0",
