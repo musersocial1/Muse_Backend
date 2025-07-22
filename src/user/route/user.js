@@ -14,7 +14,7 @@ const {
   confirmChangeEmail,
   changeUsername,
   requestChangePassword,
-  confirmChangePassword
+  confirmChangePassword,
 } = require("../controller/user");
 const { authenticate } = require("../middleware/auth");
 

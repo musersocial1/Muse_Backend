@@ -3,9 +3,12 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "start": "node src/user/main/server.js",
-    "dev": "nodemon src/user/main/server.js",
-    "later": "concurrently \"cd user-service && node app.js\" \"cd post-service && node app.js\" \"cd auth-service && node app.js\"",
+    "start:user": "node src/user/main/server.js",
+    "start:post": "node src/post/main/server.js",
+    "start": "concurrently \"npm run start:user\" \"npm run start:post\"",
+    "dev:user": "nodemon src/user/main/server.js",
+    "dev:post": "nodemon src/post/main/server.js",
+    "dev": "concurrently \"npm run dev:user\" \"npm run dev:post\"",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -21,6 +24,7 @@
   "homepage": "https://github.com/musersocial1/Muse_Backend#readme",
   "description": "muse",
   "dependencies": {
+    "aws-sdk": "^2.1692.0",
     "axios": "^1.10.0",
     "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
@@ -33,6 +37,7 @@
     "twilio": "^5.7.3"
   },
   "devDependencies": {
+    "concurrently": "^9.2.0",
     "nodemon": "^3.1.10"
   }
 }
