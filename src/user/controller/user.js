@@ -1,7 +1,8 @@
 const twilio = require("twilio");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
-//const axios = require("axios");
+const axios = require("axios");
+const { OAuth2Client } = require("google-auth-library");
 const crypto = require("crypto");
 const User = require("../model/user");
 const VerificationCode = require("../model/code");
@@ -10,6 +11,8 @@ const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
 const verifyServiceSid = process.env.TWILIO_VERIFY_SERVICE_SID;
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const client = twilio(accountSid, authToken);
 
@@ -397,18 +400,153 @@ exports.createAccount = async (req, res) => {
       );
     };
 
-    const token = generateToken(user);
+    const jwtToken = generateToken(user);
 
     const safeUser = user.toObject();
     delete safeUser.password;
 
     return res
       .status(201)
-      .json({ message: "Registration successful.", token, user: safeUser });
+      .json({ message: "Registration successful.", jwtToken, user: safeUser });
   } catch (err) {
     return res
       .status(500)
       .json({ message: "Registration failed.", error: err.message });
+  }
+};
+
+exports.googleAuth = async (req, res) => {
+  const { token } = req.body;
+
+  try {
+    const ticket = await googleClient.verifyIdToken({
+      idToken: token,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    const { email, given_name, family_name, sub, picture } = payload;
+
+    const peopleRes = await axios.get(
+      "https://people.googleapis.com/v1/people/me?personFields=genders,birthdays,phoneNumbers",
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    const peopleData = peopleRes.data;
+
+    const gender =
+      peopleData.genders?.[0]?.value?.toLowerCase() || "prefer_not_to_say";
+    const birthdayObj = peopleData.birthdays?.[0]?.date;
+    const phoneNumber = peopleData.phoneNumbers?.[0]?.value;
+
+    const dateOfBirth = birthdayObj
+      ? new Date(
+          `${birthdayObj.year || 2000}-${birthdayObj.month}-${birthdayObj.day}`
+        )
+      : undefined;
+
+    let user = await User.findOne({ email });
+    if (user) {
+      let updated = false;
+
+      if (!user.authProvider) {
+        user.authProvider = "google";
+        updated = true;
+      }
+
+      if (!user.profilePicture) {
+        user.profilePicture = picture;
+        updated = true;
+      }
+
+      if (updated) await user.save();
+    }
+
+    if (user) {
+      const jwtToken = jwt.sign(
+        { id: user._id, username: user.username, email: user.email },
+        process.env.JWT_SECRET,
+        { expiresIn: "7d" }
+      );
+
+      /*const refreshToken = jwt.sign(
+        { id: user._id, role: user.role },
+        process.env.REFRESH_TOKEN,
+        { expiresIn: "7d" }
+      );
+
+      res.cookie("refreshToken", refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "Strict",
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      });*/
+
+      return res.status(200).json({
+        message: "google login successful",
+        user,
+        jwtToken,
+        isGoogleUser: user.signUpMode === "google",
+      });
+    }
+
+    const username = email.split("@")[0];
+
+    const checkEmailAgain = await User.findOne({ email });
+    if (checkEmailAgain) {
+      return res.status(409).json({ message: "email already exists" });
+    }
+
+    user = new User({
+      firstName: given_name,
+      lastName: family_name,
+      username,
+      email,
+      password: sub,
+      signUpMode: "google",
+      profilePicture: picture,
+      gender,
+      dateOfBirth,
+      phoneNumber,
+      isPhoneVerified: true,
+    });
+
+    await user.save();
+
+    const jwtToken = jwt.sign(
+      { id: user._id, username: user.username, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    /*const refreshToken = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.REFRESH_TOKEN,
+      { expiresIn: "7d" }
+    );
+
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "Strict",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });*/
+
+    return res.status(201).json({
+      message: "google signup successful",
+      user,
+      jwtToken,
+      isGoogleUser: user.signUpMode === "google",
+    });
+  } catch (error) {
+    console.error(error);
+    return res
+      .status(400)
+      .json({ error: "google signup/signin failed", details: error.message });
   }
 };
 
@@ -523,13 +661,15 @@ exports.verifyLogin = async (req, res) => {
 
     await VerificationCode.deleteMany({ email });
 
-    const token = jwt.sign(
+    const jwtToken = jwt.sign(
       { id: user._id, username: user.username, email: user.email },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
 
-    return res.status(200).json({ message: "Login successful.", token, user });
+    return res
+      .status(200)
+      .json({ message: "Login successful.", jwtToken, user });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }

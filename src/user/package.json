@@ -7,15 +7,16 @@
     "dev": "nodemon main/server.js"
   },
   "dependencies": {
-    "express": "^5.1.0",
-    "mongoose": "^8.16.3",
-    "dotenv": "^17.2.0",
+    "axios": "^1.10.0",
     "bcryptjs": "^3.0.2",
-    "jsonwebtoken": "^9.0.2",
-    "stripe": "^18.3.0",
-    "twilio": "^5.7.3",
     "cors": "^2.8.5",
-    "axios": "^1.10.0"
+    "dotenv": "^17.2.0",
+    "express": "^5.1.0",
+    "google-auth-library": "^10.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.16.3",
+    "stripe": "^18.3.0",
+    "twilio": "^5.7.3"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"

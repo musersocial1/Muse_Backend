@@ -5,6 +5,7 @@ const {
   resendVerificationCode,
   verifyPhoneCode,
   createAccount,
+  googleAuth,
   login,
   resendCode,
   verifyLogin,
@@ -25,6 +26,8 @@ router.post("/resend-code", resendVerificationCode);
 router.post("/verify-code", verifyPhoneCode);
 
 router.post("/signup", createAccount);
+
+router.post("/google", googleAuth);
 
 router.post("/signin", login);
 
