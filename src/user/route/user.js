@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const {
+  checkUserExists,
   sendVerificationCode,
   //resendVerificationCode,
   verifyPhoneCode,
@@ -19,6 +20,8 @@ const {
   confirmChangePassword,
 } = require("../controller/user");
 const { authenticate } = require("../middleware/auth");
+
+router.get("/check-user", checkUserExists);
 
 router.post("/send-code", sendVerificationCode);
 

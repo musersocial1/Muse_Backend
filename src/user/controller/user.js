@@ -20,6 +20,59 @@ const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const client = twilio(accountSid, authToken);
 
+exports.checkUserExists = async (req, res) => {
+  try {
+    const { phoneNumber, email, username } = req.query;
+
+    if (!phoneNumber && !email && !username) {
+      return res.status(400).json({ message: "No field provided." });
+    }
+
+    if (phoneNumber) {
+      const user = await User.findOne({ phoneNumber });
+      if (user) {
+        return res
+          .status(200)
+          .json({ exists: true, message: "Phone number already exists." });
+      } else {
+        return res
+          .status(200)
+          .json({ exists: false, message: "Phone number is available." });
+      }
+    }
+
+    if (email) {
+      const user = await User.findOne({ email });
+      if (user) {
+        return res
+          .status(200)
+          .json({ exists: true, message: "Email already exists." });
+      } else {
+        return res
+          .status(200)
+          .json({ exists: false, message: "Email is available." });
+      }
+    }
+
+    if (username) {
+      const user = await User.findOne({ username });
+      if (user) {
+        return res
+          .status(200)
+          .json({ exists: true, message: "Username already exists." });
+      } else {
+        return res
+          .status(200)
+          .json({ exists: false, message: "Username is available." });
+      }
+    }
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ message: "Check failed.", error: error.message });
+  }
+};
+
 exports.sendVerificationCode = async (req, res) => {
   try {
     const { phoneNumber } = req.body;
