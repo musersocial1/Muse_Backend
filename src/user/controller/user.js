@@ -1039,7 +1039,7 @@ exports.requestChangePassword = async (req, res) => {
 
     const isMatch = await bcrypt.compare(oldPassword, user.password);
     if (!isMatch)
-      return res.status(401).json({ message: "Old password is incorrect." });
+      return res.status(400).json({ message: "Old password is incorrect." });
 
     await VerificationCode.deleteMany({ email: user.email });
 
