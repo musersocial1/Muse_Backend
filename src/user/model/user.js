@@ -27,7 +27,15 @@ const userSchema = new Schema({
     default: "prefer_not_to_say",
   },
   interests: [{ type: String, trim: true }], // Array of strings for flexibility
-  profilePicture: { type: String, default: process.env.DEFAULT_PROFILE_PIC },
+  profilePicture: {
+    url: {
+      type: String,
+      required: true,
+      default: process.env.DEFAULT_PROFILE_PIC,
+    },
+    key: { type: String },
+  },
+  // profilePicture: { type: String, default: process.env.DEFAULT_PROFILE_PIC },
   // isVerified: { type: Boolean, default: false },
   // isActive: { type: Boolean, default: true },
   signUpMode: {

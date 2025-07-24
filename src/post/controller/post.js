@@ -32,14 +32,12 @@ exports.generatePostUploadUrl = async (req, res) => {
       fileURL: `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`,
     });
   } catch (err) {
-    console.error("S3 Signed URL Error:", err);
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "Failed to generate signed URL.",
-        detail: err.message,
-      });
+    console.error("S3 Post Image URL Error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to generate post image URL.",
+      detail: err.message,
+    });
   }
 };
 

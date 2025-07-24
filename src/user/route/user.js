@@ -18,6 +18,9 @@ const {
   changeUsername,
   requestChangePassword,
   confirmChangePassword,
+  generateProfilePicUploadUrl,
+  uploadProfilePicture,
+  removeProfilePicture,
 } = require("../controller/user");
 const { authenticate } = require("../middleware/auth");
 
@@ -53,5 +56,11 @@ router.patch("/username", authenticate, changeUsername);
 router.post("/change-password", authenticate, requestChangePassword);
 
 router.post("/confirm-password", authenticate, confirmChangePassword);
+
+router.get("/get-profile-pic-url", authenticate, generateProfilePicUploadUrl);
+
+router.patch("/upload-dp", authenticate, uploadProfilePicture);
+
+router.delete("/remove-dp", authenticate, removeProfilePicture);
 
 module.exports = router;

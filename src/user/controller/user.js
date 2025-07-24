@@ -1,7 +1,7 @@
 const twilio = require("twilio");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
-const rateLimitStore = new Map();
+//const rateLimitStore = new Map();
 //const axios = require("axios");
 const { OAuth2Client } = require("google-auth-library");
 const crypto = require("crypto");
@@ -9,6 +9,21 @@ const User = require("../model/user");
 const RateLimit = require("../model/rateLimit");
 const VerificationCode = require("../model/code");
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+const {
+  S3Client,
+  PutObjectCommand,
+  DeleteObjectCommand,
+} = require("@aws-sdk/client-s3");
+const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
+const { v4: uuidv4 } = require("uuid");
+
+const s3 = new S3Client({
+  region: process.env.AWS_REGION,
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY,
+    secretAccessKey: process.env.AWS_SECRET_KEY,
+  },
+});
 
 const TEST_NUMBERS = process.env.DEV_TEST_NUMBERS.split(",");
 
@@ -1103,5 +1118,114 @@ exports.confirmChangePassword = async (req, res) => {
     return res
       .status(500)
       .json({ message: "Failed to change password.", error: error.message });
+  }
+};
+
+exports.generateProfilePicUploadUrl = async (req, res) => {
+  try {
+    const fileExt = req.query.fileType || "jpg";
+    const userId = req.user._id.toString();
+
+    const key = `profile-pictures/${userId}-${uuidv4()}.${fileExt}`;
+
+    const command = new PutObjectCommand({
+      Bucket: process.env.AWS_BUCKET_NAME,
+      Key: key,
+      ContentType: `image/${fileExt}`,
+      ACL: "public-read", // optional, but common for profile images.
+    });
+
+    const uploadURL = await getSignedUrl(s3, command, { expiresIn: 60 });
+
+    return res.status(200).json({
+      success: true,
+      uploadURL,
+      key,
+      fileURL: `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`,
+    });
+  } catch (err) {
+    console.error("S3 Profile Pic URL Error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to generate profile picture upload URL.",
+      error: err.message,
+    });
+  }
+};
+
+exports.uploadProfilePicture = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+
+    const { fileURL, key } = req.body;
+
+    if (!fileURL || !key) {
+      return res.status(400).json({ message: "Missing profile picture data." });
+    }
+
+    const oldKey = user.profilePicture?.key;
+
+    // Delete old profile picture if it exists and is NOT the default
+    if (oldKey && oldKey !== process.env.DEFAULT_PROFILE_KEY) {
+      try {
+        await s3.send(
+          new DeleteObjectCommand({
+            Bucket: process.env.AWS_BUCKET_NAME,
+            Key: oldKey,
+          })
+        );
+      } catch (err) {
+        console.warn("Failed to delete old profile picture:", err.message);
+      }
+    }
+
+    user.profilePicture = { url: fileURL, key };
+    await user.save();
+
+    res.status(200).json({
+      message: "Profile picture updated successfully.",
+      profilePicture: user.profilePicture,
+    });
+  } catch (err) {
+    console.error("Error uploading profile picture:", err.message);
+    res.status(500).json({ message: "Internal server error." });
+  }
+};
+
+exports.removeProfilePicture = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+
+    const currentKey = user.profilePicture?.key;
+
+    // Delete current picture if it exists and is NOT the default
+    if (currentKey && currentKey !== process.env.DEFAULT_PROFILE_KEY) {
+      try {
+        await s3.send(
+          new DeleteObjectCommand({
+            Bucket: process.env.AWS_BUCKET_NAME,
+            Key: currentKey,
+          })
+        );
+      } catch (err) {
+        console.warn("Failed to delete profile picture:", err.message);
+      }
+    }
+
+    // Reset to default
+    user.profilePicture = {
+      url: process.env.DEFAULT_PROFILE_PIC,
+      key: process.env.DEFAULT_PROFILE_KEY,
+    };
+
+    await user.save();
+
+    res.status(200).json({
+      message: "Profile picture removed and reset to default.",
+      profilePicture: user.profilePicture,
+    });
+  } catch (err) {
+    console.error("Error removing profile picture:", err.message);
+    res.status(500).json({ message: "Internal server error." });
   }
 };

@@ -5,3 +5,5 @@ package-lock.json
 .elasticbeanstalk/*
 !.elasticbeanstalk/*.config.yml
 !.elasticbeanstalk/*.global.yml
+test.js
+default_profile_picture.jpg

@@ -18,7 +18,7 @@ const {
 } = require("../controller/post");
 const { authenticate } = require("../middleware/auth");
 
-router.get("/get-upload-url", authenticate, generatePostUploadUrl);
+router.get("/get-post-upload-url", authenticate, generatePostUploadUrl);
 
 router.post("/add-post", authenticate, createPost);
 
