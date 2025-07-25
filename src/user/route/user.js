@@ -18,6 +18,8 @@ const {
   changeUsername,
   requestChangePassword,
   confirmChangePassword,
+  forgotPassword,
+  resetPassword,
   generateProfilePicUploadUrl,
   uploadProfilePicture,
   removeProfilePicture,
@@ -56,6 +58,10 @@ router.patch("/username", authenticate, changeUsername);
 router.post("/change-password", authenticate, requestChangePassword);
 
 router.post("/confirm-password", authenticate, confirmChangePassword);
+
+router.post("/forgot-password", forgotPassword);
+
+router.post("/reset-password", resetPassword);
 
 router.get("/get-profile-pic-url", authenticate, generateProfilePicUploadUrl);
 

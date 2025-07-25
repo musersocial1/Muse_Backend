@@ -8,6 +8,7 @@ const crypto = require("crypto");
 const User = require("../model/user");
 const RateLimit = require("../model/rateLimit");
 const VerificationCode = require("../model/code");
+const PasswordResetToken = require("../model/password");
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const {
   S3Client,
@@ -1118,6 +1119,81 @@ exports.confirmChangePassword = async (req, res) => {
     return res
       .status(500)
       .json({ message: "Failed to change password.", error: error.message });
+  }
+};
+
+exports.forgotPassword = async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: "Email is required." });
+
+  try {
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ error: "User not found." });
+
+    await PasswordResetToken.deleteMany({ user: user._id });
+
+    const token = crypto.randomInt(100000, 999999).toString();
+    const expiresAt = Date.now() + 10 * 60 * 1000;
+
+    await PasswordResetToken.create({ user: user._id, token, expiresAt });
+
+    return res.status(200).json({
+      message: "Password reset code has been generated.",
+      token,
+      expiresAt,
+    });
+  } catch (err) {
+    console.error(err);
+    return res
+      .status(500)
+      .json({ error: "Failed to process password reset request." });
+  }
+};
+
+exports.resetPassword = async (req, res) => {
+  const { token, newPassword, confirmPassword } = req.body;
+
+  if (!token || !newPassword || !confirmPassword) {
+    return res.status(400).json({ error: "All fields are required." });
+  }
+
+  if (newPassword !== confirmPassword) {
+    return res.status(400).json({ error: "Passwords do not match." });
+  }
+
+  const validatePassword = (password) => {
+    return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_\-+={}[\]|:;"'<>,.?/~`])[A-Za-z\d!@#$%^&*()_\-+={}[\]|:;"'<>,.?/~`]{8,}$/.test(
+      password
+    );
+  };
+
+  if (!validatePassword(newPassword)) {
+    return res.status(400).json({
+      error:
+        "Password must be at least 8 characters, include an uppercase letter, a lowercase letter, a number, and a special character.",
+    });
+  }
+
+  try {
+    const resetRecord = await PasswordResetToken.findOne({ token });
+    if (!resetRecord || resetRecord.expiresAt < Date.now()) {
+      return res.status(400).json({ error: "Invalid or expired reset token." });
+    }
+
+    const user = await User.findById(resetRecord.user);
+    if (!user) return res.status(404).json({ error: "User not found." });
+
+    user.password = newPassword;
+    await user.save();
+
+    await PasswordResetToken.deleteMany({ user: user._id });
+
+    return res.status(200).json({ message: "Password has been reset." });
+  } catch (error) {
+    console.error(error);
+    return res
+      .status(500)
+      .json({ error: "Failed to reset password.", details: error.message });
   }
 };
 
