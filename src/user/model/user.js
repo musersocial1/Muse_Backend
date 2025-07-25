@@ -2,6 +2,8 @@ const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 const { Schema } = mongoose;
 
+const DEFAULT_PROFILE_PIC = process.env.DEFAULT_PROFILE_PIC;
+
 const userSchema = new Schema({
   firstName: { type: String, trim: true, required: true },
   lastName: { type: String, trim: true, required: true },
@@ -31,7 +33,7 @@ const userSchema = new Schema({
     url: {
       type: String,
       required: true,
-      default: process.env.DEFAULT_PROFILE_PIC,
+      default: DEFAULT_PROFILE_PIC,
     },
     key: { type: String },
   },

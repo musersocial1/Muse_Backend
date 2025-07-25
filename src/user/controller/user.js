@@ -1184,6 +1184,14 @@ exports.resetPassword = async (req, res) => {
     if (!user) return res.status(404).json({ error: "User not found." });
 
     user.password = newPassword;
+
+    if (!user.profilePicture?.url) {
+      user.profilePicture = {
+        url: process.env.DEFAULT_PROFILE_PIC,
+        key: process.env.DEFAULT_PROFILE_KEY,
+      };
+    }
+
     await user.save();
 
     await PasswordResetToken.deleteMany({ user: user._id });
