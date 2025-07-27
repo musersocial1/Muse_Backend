@@ -5,8 +5,7 @@ const { Schema } = mongoose;
 const DEFAULT_PROFILE_PIC = process.env.DEFAULT_PROFILE_PIC;
 
 const userSchema = new Schema({
-  firstName: { type: String, trim: true, required: true },
-  lastName: { type: String, trim: true, required: true },
+  fullName: { type: String, trim: true, required: true },
   username: {
     type: String,
     unique: true,

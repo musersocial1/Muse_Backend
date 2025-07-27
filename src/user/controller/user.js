@@ -446,12 +446,11 @@ exports.verifyPhoneCode = async (req, res) => {
 exports.createAccount = async (req, res) => {
   try {
     const {
-      firstName,
-      lastName,
+      fullName,
       username,
       email,
       password,
-      confirmPassword,
+      //confirmPassword,
       dateOfBirth,
       accountType,
       gender,
@@ -460,12 +459,11 @@ exports.createAccount = async (req, res) => {
     } = req.body;
 
     if (
-      !firstName ||
-      !lastName ||
+      !fullName ||
       !username ||
       !email ||
       !password ||
-      !confirmPassword ||
+      //!confirmPassword ||
       !dateOfBirth ||
       !accountType ||
       !phoneNumber
@@ -498,9 +496,9 @@ exports.createAccount = async (req, res) => {
       });
     }
 
-    if (password !== confirmPassword) {
+    /*if (password !== confirmPassword) {
       return res.status(400).json({ error: "Passwords do not match." });
-    }
+    }*/
 
     const usernameExists = await User.findOne({
       username: username.toLowerCase(),
@@ -521,13 +519,12 @@ exports.createAccount = async (req, res) => {
 
     const stripeCustomer = await stripe.customers.create({
       email: email.toLowerCase(),
-      name: `${firstName} ${lastName}`,
+      name: `${fullName}`,
       phone: phoneNumber,
     });
 
     const user = new User({
-      firstName,
-      lastName,
+      fullName,
       username: username.toLowerCase(),
       email: email.toLowerCase(),
       password,
@@ -576,8 +573,7 @@ exports.googleAuth = async (req, res) => {
     const payload = ticket.getPayload();
     const { email, given_name, family_name, sub, picture } = payload;
 
-    const firstName = given_name;
-    const lastName = family_name;
+    const fullName = `${given_name} ${family_name}`.trim();
 
     /*const peopleRes = await axios.get(
       "https://people.googleapis.com/v1/people/me?personFields=genders,birthdays,phoneNumbers",
@@ -663,12 +659,11 @@ exports.googleAuth = async (req, res) => {
 
     const stripeCustomer = await stripe.customers.create({
       email: email.toLowerCase(),
-      name: `${firstName} ${lastName}`,
+      name: `${fullName}`,
     });
 
     user = new User({
-      firstName,
-      lastName,
+      fullName,
       username,
       email,
       password: sub,
@@ -1151,15 +1146,15 @@ exports.forgotPassword = async (req, res) => {
 };
 
 exports.resetPassword = async (req, res) => {
-  const { token, newPassword, confirmPassword } = req.body;
+  const { token, newPassword /*, confirmPassword*/ } = req.body;
 
-  if (!token || !newPassword || !confirmPassword) {
+  if (!token || !newPassword /* || !confirmPassword*/) {
     return res.status(400).json({ error: "All fields are required." });
   }
 
-  if (newPassword !== confirmPassword) {
+  /*if (newPassword !== confirmPassword) {
     return res.status(400).json({ error: "Passwords do not match." });
-  }
+  }*/
 
   const validatePassword = (password) => {
     return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_\-+={}[\]|:;"'<>,.?/~`])[A-Za-z\d!@#$%^&*()_\-+={}[\]|:;"'<>,.?/~`]{8,}$/.test(
