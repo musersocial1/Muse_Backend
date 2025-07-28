@@ -523,6 +523,11 @@ exports.createAccount = async (req, res) => {
       phone: phoneNumber,
     });
 
+    let role = "joiner";
+    if (accountType === "create_community") {
+      role = "creator";
+    }
+
     const user = new User({
       fullName,
       username: username.toLowerCase(),
@@ -533,6 +538,7 @@ exports.createAccount = async (req, res) => {
       gender,
       interests,
       phoneNumber,
+      role,
       isPhoneVerified: true,
       stripeCustomerId: stripeCustomer.id,
     });

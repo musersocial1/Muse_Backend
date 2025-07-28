@@ -24,7 +24,8 @@ exports.authenticate = async (req, res, next) => {
 
 exports.authorize = (allowedRoles = []) => {
   return (req, res, next) => {
-    if (!req.user.role.some((role) => allowedRoles.includes(role))) {
+    // If user not found or their role is not in allowedRoles, block
+    if (!req.user || !allowedRoles.includes(req.user.role)) {
       return res
         .status(403)
         .json({ message: "forbidden: insufficient privileges" });
@@ -32,3 +33,14 @@ exports.authorize = (allowedRoles = []) => {
     next();
   };
 };
+
+/*exports.authorize = (allowedRoles = []) => {
+  return (req, res, next) => {
+    if (!req.user.role.some((role) => allowedRoles.includes(role))) {
+      return res
+        .status(403)
+        .json({ message: "forbidden: insufficient privileges" });
+    }
+    next();
+  };
+};*/

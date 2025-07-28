@@ -21,6 +21,7 @@ const userSchema = new Schema({
   accountType: {
     type: String,
     enum: ["join_community", "create_community"],
+    required: true,
   },
   gender: {
     type: String,
@@ -35,6 +36,12 @@ const userSchema = new Schema({
       default: DEFAULT_PROFILE_PIC,
     },
     key: { type: String },
+  },
+  role: {
+    type: String,
+    enum: ["admin", "creator", "joiner"],
+    default: "joiner",
+    required: true,
   },
   // profilePicture: { type: String, default: process.env.DEFAULT_PROFILE_PIC },
   // isVerified: { type: Boolean, default: false },
