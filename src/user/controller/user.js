@@ -547,7 +547,12 @@ exports.createAccount = async (req, res) => {
 
     const generateToken = (user) => {
       return jwt.sign(
-        { id: user._id, username: user.username, email: user.email },
+        {
+          id: user._id,
+          username: user.username,
+          email: user.email,
+          role: user.role,
+        },
         process.env.JWT_SECRET
       );
     };
@@ -622,7 +627,12 @@ exports.googleAuth = async (req, res) => {
 
     if (user) {
       const jwtToken = jwt.sign(
-        { id: user._id, username: user.username, email: user.email },
+        {
+          id: user._id,
+          username: user.username,
+          email: user.email,
+          role: user.role,
+        },
         process.env.JWT_SECRET
       );
 
@@ -685,7 +695,12 @@ exports.googleAuth = async (req, res) => {
     await user.save();
 
     const jwtToken = jwt.sign(
-      { id: user._id, username: user.username, email: user.email },
+      {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+      },
       process.env.JWT_SECRET
     );
 
@@ -868,7 +883,12 @@ exports.verifyLogin = async (req, res) => {
     await VerificationCode.deleteMany({ email });
 
     const jwtToken = jwt.sign(
-      { id: user._id, username: user.username, email: user.email },
+      {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+      },
       process.env.JWT_SECRET
     );
 
@@ -1209,7 +1229,22 @@ exports.resetPassword = async (req, res) => {
 exports.generateProfilePicUploadUrl = async (req, res) => {
   try {
     const fileExt = req.query.fileType || "jpg";
+    const oldKey = req.query.oldKey;
     const userId = req.user._id.toString();
+
+    if (oldKey) {
+      try {
+        await s3.send(
+          new DeleteObjectCommand({
+            Bucket: process.env.AWS_BUCKET_NAME,
+            Key: oldKey,
+          })
+        );
+        console.log(`Deleted previous profile picture: ${oldKey}`);
+      } catch (err) {
+        console.warn("Failed to delete previous profile pic:", err.message);
+      }
+    }
 
     const key = `profile-pictures/${userId}-${uuidv4()}.${fileExt}`;
 

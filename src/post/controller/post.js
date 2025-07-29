@@ -1,4 +1,8 @@
-const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
+const {
+  S3Client,
+  DeleteObjectCommand,
+  PutObjectCommand,
+} = require("@aws-sdk/client-s3");
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 const { v4: uuidv4 } = require("uuid");
 const Post = require("../model/post");
@@ -15,6 +19,22 @@ const s3 = new S3Client({
 exports.generatePostUploadUrl = async (req, res) => {
   try {
     const fileExt = req.query.fileType || "jpg"; // from frontend: .jpg, .png, etc.
+    const oldKey = req.query.oldKey;
+
+    // Optional: delete old post image if provided
+    if (oldKey) {
+      try {
+        await s3.send(
+          new DeleteObjectCommand({
+            Bucket: process.env.AWS_BUCKET_NAME,
+            Key: oldKey,
+          })
+        );
+      } catch (err) {
+        console.warn("Failed to delete old post image:", err.message);
+      }
+    }
+
     const key = `posts/${uuidv4()}.${fileExt}`;
 
     const params = new PutObjectCommand({

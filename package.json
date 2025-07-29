@@ -5,10 +5,12 @@
   "scripts": {
     "start:user": "node src/user/main/server.js",
     "start:post": "node src/post/main/server.js",
-    "start": "concurrently \"npm run start:user\" \"npm run start:post\"",
+    "start:comm": "node src/community/main/server.js",
+    "start": "concurrently \"npm run start:user\" \"npm run start:post\" \"npm run start:comm\"",
     "dev:user": "nodemon src/user/main/server.js",
     "dev:post": "nodemon src/post/main/server.js",
-    "dev": "concurrently \"npm run dev:user\" \"npm run dev:post\"",
+    "dev:comm": "nodemon src/community/main/server.js",
+    "dev": "concurrently \"npm run dev:user\" \"npm run dev:post\" \"npm run dev:comm\"",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -29,10 +31,10 @@
     "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
     "crypto": "^1.0.1",
-    "dotenv": "^17.2.0",
+    "dotenv": "^17.2.1",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.16.3",
+    "mongoose": "^8.16.5",
     "stripe": "^18.3.0",
     "twilio": "^5.7.3"
   },

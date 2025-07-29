@@ -63,7 +63,11 @@ router.post("/forgot-password", forgotPassword);
 
 router.post("/reset-password", resetPassword);
 
-router.get("/get-profile-pic-url", authenticate, generateProfilePicUploadUrl);
+router.get(
+  "/get-profile-pic-upload-url",
+  authenticate,
+  generateProfilePicUploadUrl
+);
 
 router.patch("/upload-dp", authenticate, uploadProfilePicture);
 
