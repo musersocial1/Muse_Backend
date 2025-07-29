@@ -56,7 +56,7 @@ const userSchema = new Schema({
     default: 0,
   },
   stripeCustomerId: { type: String, trim: true },
-  profileCompleted: { type: Boolean, default: false },
+  profileCompleted: { type: Boolean, default: false }, // check this out very much later (null).
   createdAt: { type: Date, default: Date.now },
 });
 
