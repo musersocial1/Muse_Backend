@@ -6,7 +6,7 @@ const {
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 const { v4: uuidv4 } = require("uuid");
 const Community = require("../model/comm");
-const User = require("../../user/model/user");
+//const User = require("../../user/model/user");
 
 const s3 = new S3Client({
   region: process.env.AWS_REGION,
