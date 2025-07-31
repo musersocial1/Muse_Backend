@@ -39,7 +39,7 @@ io.on("connection", (socket) => {
 
 app.set("io", io);*/
 
-const postRoute = require("../route/post");
+const postRoute = require("../router/post");
 // const commentRoute = require("../route/comment");
 
 app.use(`/post`, postRoute);

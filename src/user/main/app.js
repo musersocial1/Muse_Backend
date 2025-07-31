@@ -39,8 +39,8 @@ io.on("connection", (socket) => {
 
 app.set("io", io);*/
 
-const userRoute = require("../route/user");
-const cardRoute = require("../route/card");
+const userRoute = require("../router/user");
+const cardRoute = require("../router/card");
 
 app.use(`/user`, userRoute);
 app.use(`/card`, cardRoute);

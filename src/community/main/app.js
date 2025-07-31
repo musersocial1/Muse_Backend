@@ -39,7 +39,7 @@ io.on("connection", (socket) => {
 
 app.set("io", io);*/
 
-const commRoute = require("../route/comm");
+const commRoute = require("../router/comm");
 // const commentRoute = require("../route/comment");
 
 app.use(`/community`, commRoute);
