@@ -6,7 +6,8 @@ const {
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 const { v4: uuidv4 } = require("uuid");
 const Community = require("../model/comm");
-//const User = require("../../user/model/user");
+const axios = require("axios");
+const axiosRetry = require("axios-retry").default;
 
 const s3 = new S3Client({
   region: process.env.AWS_REGION,
@@ -70,6 +71,15 @@ exports.createCommunity = async (req, res) => {
 
     const creatorId = req.user.id;
 
+    const existingCommunity = await Community.findOne({ creator: creatorId });
+    if (existingCommunity) {
+      return res.status(409).json({
+        message:
+          "Each creator can only own one community. You already created a community.",
+        community: existingCommunity.name,
+      });
+    }
+
     const { name, coverImage, bio, links, price, type, guideline, category } =
       req.body;
 
@@ -82,20 +92,6 @@ exports.createCommunity = async (req, res) => {
       return res.status(400).json({ message: "these fields are required." });
     }
 
-    /*if (!bio) return res.status(400).json({ message: "Bio is required." });
-    if (!links || !Array.isArray(links))
-      return res.status(400).json({ message: "Links must be an array." });
-    if (typeof price !== "number" || price < 0)
-      return res.status(400).json({ message: "Price must be a valid number." });
-    if (!type || !["public", "private"].includes(type))
-      return res
-        .status(400)
-        .json({ message: "Type must be public or private." });
-    if (!guideline)
-      return res.status(400).json({ message: "Guideline is required." });
-    if (!category)
-      return res.status(400).json({ message: "Category is required." });*/
-
     // Stripe payment logic (optional)
     // let stripeProductId = null;
     // let stripePriceId = null;
@@ -103,7 +99,6 @@ exports.createCommunity = async (req, res) => {
     //   // Create Stripe product/price here
     // }
 
-    // Create community document
     const community = new Community({
       name,
       coverImage,
@@ -138,6 +133,33 @@ exports.createCommunity = async (req, res) => {
     // console.warn("Failed to update user's createdCommunities", err.message);
     // }
 
+    setImmediate(async () => {
+      const discoverApi = axios.create({
+        baseURL: process.env.DISCOVER_SERVICE_URL,
+        timeout: 3000,
+      });
+      axiosRetry(discoverApi, {
+        retries: 3,
+        retryDelay: axiosRetry.exponentialDelay,
+        retryCondition: (error) =>
+          axiosRetry.isNetworkOrIdempotentRequestError(error) ||
+          error.code === "ECONNABORTED",
+      });
+      try {
+        await discoverApi.post("/discover/index-comm", {
+          _id: community._id.toString(),
+          name: community.name,
+          coverImage: community.coverImage?.url || "",
+          category: community.category,
+          creatorUsername: req.user.username, // creator: community.creator,
+          // bio: community.bio,
+        });
+      } catch (indexErr) {
+        console.warn("Failed to index comm in Discover:", indexErr.message);
+        // Optionally: push to a retry queue or error log for later processing
+      }
+    });
+
     return res.status(201).json({
       message: "Community created successfully.",
       community,
@@ -147,5 +169,25 @@ exports.createCommunity = async (req, res) => {
     return res
       .status(500)
       .json({ message: "Failed to create community.", error: err.message });
+  }
+};
+
+exports.getCommunity = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const community = await Community.find({ creator: userId });
+
+    return res.status(200).json({
+      message: "Communities created by user fetched successfully.",
+      //count: community.length,
+      community,
+    });
+  } catch (err) {
+    console.error("Get Created Communities Error:", err);
+    return res.status(500).json({
+      message: "Failed to fetch communities.",
+      error: err.message,
+    });
   }
 };

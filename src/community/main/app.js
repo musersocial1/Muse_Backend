@@ -40,10 +40,8 @@ io.on("connection", (socket) => {
 app.set("io", io);*/
 
 const commRoute = require("../router/comm");
-// const commentRoute = require("../route/comment");
 
 app.use(`/community`, commRoute);
-// app.use(`/comment`, commentRoute);
 
 /*app.use((err, req, res, next) => {
   if (err.code === "LIMIT_FILE_SIZE") {
@@ -59,7 +57,7 @@ app.get("/", (req, res) => {
 });
 
 app.get("/ping", (req, res) => {
-  res.status(200).send("post-pong");
+  res.status(200).send("community-pong");
 });
 console.log("pinged at", new Date().toLocaleTimeString());
 

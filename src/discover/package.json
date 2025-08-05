@@ -1,5 +1,5 @@
 {
-  "name": "muse-community-service",
+  "name": "muse-discover-service",
   "version": "1.0.0",
   "main": "main/server.js",
   "scripts": {
@@ -7,16 +7,12 @@
     "dev": "nodemon main/server.js"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.850.0",
-    "@aws-sdk/s3-request-presigner": "^3.850.0",
-    "axios": "^1.11.0",
-    "axios-retry": "^4.5.0",
+    "@elastic/elasticsearch": "^9.1.0",
+    "@opensearch-project/opensearch": "^3.5.1",
     "cors": "^2.8.5",
     "dotenv": "^17.2.0",
     "express": "^5.1.0",
-    "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.16.5",
-    "uuid": "^11.1.0"
+    "jsonwebtoken": "^9.0.2"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"

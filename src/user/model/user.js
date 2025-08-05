@@ -3,6 +3,7 @@ const bcrypt = require("bcryptjs");
 const { Schema } = mongoose;
 
 const DEFAULT_PROFILE_PIC = process.env.DEFAULT_PROFILE_PIC;
+const DEFAULT_PROFILE_KEY = process.env.DEFAULT_PROFILE_KEY;
 
 const userSchema = new Schema({
   fullName: { type: String, trim: true, required: true },
@@ -35,7 +36,7 @@ const userSchema = new Schema({
       required: true,
       default: DEFAULT_PROFILE_PIC,
     },
-    key: { type: String },
+    key: { type: String, required: true, default: DEFAULT_PROFILE_KEY },
   },
   role: {
     type: String,

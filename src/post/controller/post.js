@@ -5,6 +5,8 @@ const {
 } = require("@aws-sdk/client-s3");
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 const { v4: uuidv4 } = require("uuid");
+const axios = require("axios");
+const axiosRetry = require("axios-retry").default;
 const Post = require("../model/post");
 const Comment = require("../model/comment");
 
@@ -79,6 +81,34 @@ exports.createPost = async (req, res) => {
     });
 
     await post.save();
+
+    setImmediate(async () => {
+      const discoverApi = axios.create({
+        baseURL: process.env.DISCOVER_SERVICE_URL,
+        timeout: 3000,
+      });
+      axiosRetry(discoverApi, {
+        retries: 3,
+        retryDelay: axiosRetry.exponentialDelay,
+        retryCondition: (error) =>
+          axiosRetry.isNetworkOrIdempotentRequestError(error) ||
+          error.code === "ECONNABORTED",
+      });
+      try {
+        await discoverApi.post("/discover/index-post", {
+          _id: post._id.toString(),
+          userId: post.userId, // or .toString() if needed
+          content: post.content,
+          images: post.images,
+          tags: post.tags,
+          createdAt: post.createdAt,
+          // add other fields if you want
+        });
+      } catch (indexErr) {
+        console.warn("Failed to index post in Discover:", indexErr.message);
+        // Optionally: push to a retry queue or error log for later processing
+      }
+    });
 
     res.status(201).json({
       success: true,

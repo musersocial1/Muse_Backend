@@ -39,9 +39,9 @@ io.on("connection", (socket) => {
 
 app.set("io", io);*/
 
-const postRoute = require("../router/post");
+const discRoute = require("../router/discover");
 
-app.use(`/post`, postRoute);
+app.use(`/discover`, discRoute);
 
 /*app.use((err, req, res, next) => {
   if (err.code === "LIMIT_FILE_SIZE") {
@@ -57,7 +57,7 @@ app.get("/", (req, res) => {
 });
 
 app.get("/ping", (req, res) => {
-  res.status(200).send("post-pong");
+  res.status(200).send("discover-pong");
 });
 console.log("pinged at", new Date().toLocaleTimeString());
 

@@ -1,8 +1,8 @@
 const twilio = require("twilio");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
-//const rateLimitStore = new Map();
-//const axios = require("axios");
+const axios = require("axios");
+const axiosRetry = require("axios-retry").default;
 const { OAuth2Client } = require("google-auth-library");
 const crypto = require("crypto");
 const User = require("../model/user");
@@ -543,6 +543,7 @@ exports.createAccount = async (req, res) => {
       role,
       isPhoneVerified: true,
       stripeCustomerId: stripeCustomer.id,
+      profileCompleted: true,
     });
 
     await user.save();
@@ -554,6 +555,7 @@ exports.createAccount = async (req, res) => {
           username: user.username,
           email: user.email,
           role: user.role,
+          interests: user.interests || [],
         },
         process.env.JWT_SECRET
       );
@@ -564,9 +566,39 @@ exports.createAccount = async (req, res) => {
     const safeUser = user.toObject();
     delete safeUser.password;
 
-    return res
-      .status(201)
-      .json({ message: "Registration successful.", jwtToken, user: safeUser });
+    setImmediate(async () => {
+      const discoverApi = axios.create({
+        baseURL: process.env.DISCOVER_SERVICE_URL,
+        timeout: 3000,
+      });
+      axiosRetry(discoverApi, {
+        retries: 3,
+        retryDelay: axiosRetry.exponentialDelay,
+        retryCondition: (error) =>
+          axiosRetry.isNetworkOrIdempotentRequestError(error) ||
+          error.code === "ECONNABORTED",
+      });
+      try {
+        await discoverApi.post("/discover/index-user", {
+          _id: user._id.toString(),
+          username: user.username,
+          fullName: user.fullName,
+          interests: user.interests || [],
+          profilePicture: user.profilePicture?.url || "",
+          // role: user.role
+        });
+      } catch (indexErr) {
+        console.warn("Failed to index user in Discover:", indexErr.message);
+        // Optionally: push to a retry queue or error log for later processing
+      }
+    });
+
+    return res.status(201).json({
+      message: "Registration successful.",
+      jwtToken,
+      user: safeUser,
+      isCreator: role === "creator",
+    });
   } catch (err) {
     return res
       .status(500)
@@ -890,6 +922,7 @@ exports.verifyLogin = async (req, res) => {
         username: user.username,
         email: user.email,
         role: user.role,
+        interests: user.interests || [],
       },
       process.env.JWT_SECRET
     );
