@@ -2,8 +2,8 @@ node_modules
 .env
 package-lock.json
 # Elastic Beanstalk Files
-.elasticbeanstalk/*
-!.elasticbeanstalk/*.config.yml
-!.elasticbeanstalk/*.global.yml
-test.js
-default_profile_picture.jpg
+# .elasticbeanstalk/*
+# !.elasticbeanstalk/*.config.yml
+# !.elasticbeanstalk/*.global.yml
+# test.js
+# default_profile_picture.jpg
