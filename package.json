@@ -7,12 +7,14 @@
     "start:post": "node src/post/main/server.js",
     "start:comm": "node src/community/main/server.js",
     "start:disc": "node src/discover/main/server.js",
-    "start": "concurrently \"npm run start:user\" \"npm run start:post\" \"npm run start:comm\" \"npm run start:disc\"",
+    "start:ai": "node src/ai/main/server.js",
+    "start": "concurrently \"npm run start:user\" \"npm run start:post\" \"npm run start:comm\" \"npm run start:disc\" \"npm run start:ai\"",
     "dev:user": "nodemon src/user/main/server.js",
     "dev:post": "nodemon src/post/main/server.js",
     "dev:comm": "nodemon src/community/main/server.js",
     "dev:disc": "nodemon src/discover/main/server.js",
-    "dev": "concurrently \"npm run dev:user\" \"npm run dev:post\" \"npm run dev:comm\" \"npm run dev:disc\"",
+    "dev:ai": "nodemon src/ai/main/server.js",
+    "dev": "concurrently \"npm run dev:user\" \"npm run dev:post\" \"npm run dev:comm\" \"npm run dev:disc\" \"npm run dev:ai\"",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
