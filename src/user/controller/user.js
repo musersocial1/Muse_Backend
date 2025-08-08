@@ -1287,7 +1287,7 @@ exports.generateProfilePicUploadUrl = async (req, res) => {
       Bucket: process.env.AWS_BUCKET_NAME,
       Key: key,
       ContentType: `image/${fileExt}`,
-      ACL: "public-read", // optional, but common for profile images.
+      // ACL: "public-read", // optional, but common for profile images.
     });
 
     const uploadURL = await getSignedUrl(s3, command, { expiresIn: 60 });

@@ -41,7 +41,7 @@ exports.getCoverImageUploadUrl = async (req, res) => {
       Bucket: process.env.AWS_BUCKET_NAME,
       Key: key,
       ContentType: `image/${fileExt}`,
-      ACL: "public-read",
+      // ACL: "public-read",
     });
 
     const uploadURL = await getSignedUrl(s3, command, { expiresIn: 60 });
