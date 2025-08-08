@@ -53,7 +53,7 @@ app.use(`/post`, postRoute);
 });*/
 
 app.get("/", (req, res) => {
-  res.status(200).send("Hello from Muse_Backend!");
+  res.status(200).send("Hello Post Muse_Backend!");
 });
 
 app.get("/ping", (req, res) => {
