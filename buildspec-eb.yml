@@ -1,0 +1,40 @@
+version: 0.2
+
+env:
+  variables:
+    # Set this per pipeline in CodeBuild (e.g., src/user, src/post, src/ai, ...)
+    SERVICE_PATH: ""
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 22
+    commands:
+      - node -v
+  build:
+    commands:
+      - |
+        if [ -z "$SERVICE_PATH" ]; then
+          echo "ERROR: SERVICE_PATH env var not set (e.g., src/user)"; exit 1
+        fi
+      - echo "Packaging $SERVICE_PATH for Elastic Beanstalk..."
+      - rm -rf out && mkdir -p out
+      # Copy service files except stuff we don't want in the deploy bundle
+      - rsync -a --delete \
+          --exclude '.git*' \
+          --exclude 'node_modules' \
+          --exclude 'tests' \
+          --exclude 'README.md' \
+          "$SERVICE_PATH"/ out/
+      # (optional) install prod deps inside the bundle
+      - |
+        if [ -f out/package.json ]; then
+          pushd out
+          npm ci --omit=dev || npm install --production
+          popd
+        fi
+
+artifacts:
+  base-directory: out
+  files:
+    - '**/*'
