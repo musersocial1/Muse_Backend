@@ -9,15 +9,7 @@ const app = express();
 const server = http.createServer(app);
 
 const corsOptions = {
-  origin: [
-    "http://localhost:3000",
-    "http://localhost:3001",
-    "http://localhost:3002",
-    "http://localhost:3003",
-    "http://localhost:3004",
-    "http://localhost:3005",
-  ],
-  credentials: true,
+  origin: "*",
 };
 
 app.use(cors(corsOptions));
@@ -53,7 +45,7 @@ app.use(`/discover`, discRoute);
 });*/
 
 app.get("/", (req, res) => {
-  res.status(200).send("Hello from Muse_Backend!");
+  res.status(200).send("Hello Disc Muse_Backend!");
 });
 
 app.get("/ping", (req, res) => {
