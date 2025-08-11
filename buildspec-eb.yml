@@ -15,24 +15,38 @@ phases:
     commands:
       - |
         if [ -z "$SERVICE_PATH" ]; then
-          echo "ERROR: SERVICE_PATH env var not set (e.g., src/user)"; exit 1
+          echo "ERROR: SERVICE_PATH env var not set (e.g., src/ai or src/user)"; exit 1
         fi
+      - echo "Repo root is: $(pwd)"
+      - echo "Listing repo root:"
+      - ls -la
+      - echo "Checking service path: $SERVICE_PATH"
+      - test -d "$SERVICE_PATH" || { echo "Path $SERVICE_PATH not found"; exit 1; }
       - echo "Packaging $SERVICE_PATH for Elastic Beanstalk..."
       - rm -rf out && mkdir -p out
-      # Copy service files except stuff we don't want in the deploy bundle
-      - rsync -a --delete \
-          --exclude '.git*' \
-          --exclude 'node_modules' \
-          --exclude 'tests' \
-          --exclude 'README.md' \
-          "$SERVICE_PATH"/ out/
-      # (optional) install prod deps inside the bundle
-      - |
-        if [ -f out/package.json ]; then
-          pushd out
-          npm ci --omit=dev || npm install --production
-          popd
-        fi
+      # NOTE: keep this as a single line (no backslashes)
+      - rsync -a --delete --exclude='.git*' --exclude='node_modules' --exclude='tests' --exclude='README.md' "$SERVICE_PATH"/ out/
+
+      # - |
+      #   if [ -z "$SERVICE_PATH" ]; then
+      #     echo "ERROR: SERVICE_PATH env var not set (e.g., src/user)"; exit 1
+      #   fi
+      # - echo "Packaging $SERVICE_PATH for Elastic Beanstalk..."
+      # - rm -rf out && mkdir -p out
+      # # Copy service files except stuff we don't want in the deploy bundle
+      # - rsync -a --delete \
+      #     --exclude '.git*' \
+      #     --exclude 'node_modules' \
+      #     --exclude 'tests' \
+      #     --exclude 'README.md' \
+      #     "$SERVICE_PATH"/ out/
+      # # (optional) install prod deps inside the bundle
+      # - |
+      #   if [ -f out/package.json ]; then
+      #     pushd out
+      #     npm ci --omit=dev || npm install --production
+      #     popd
+      #   fi
 
 artifacts:
   base-directory: out
