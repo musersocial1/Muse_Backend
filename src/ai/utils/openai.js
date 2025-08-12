@@ -37,23 +37,33 @@ exports.OpenAIResponse = async (messages) => {
  */
 exports.OpenAIStream = async (messages, onDelta) => {
   const payload = {
-    model: "gpt-5",
+    model: "gpt-4o",
     messages,
     stream: true,
   };
 
-  const resp = await axios.post(
-    "https://api.openai.com/v1/chat/completions",
-    payload,
-    {
-      headers: {
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      responseType: "stream",
-      // IMPORTANT: don’t set maxContentLength here; streaming is chunked
-    }
-  );
+  let resp;
+  try {
+    resp = await axios.post(
+      "https://api.openai.com/v1/chat/completions",
+      payload,
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        responseType: "stream",
+      }
+    );
+  } catch (err) {
+    // 🔹 Sanitize Axios error to avoid circular refs
+    const safeError = {
+      message: err.message,
+      status: err.response?.status,
+      data: err.response?.data,
+    };
+    throw new Error(`OpenAI API request failed: ${JSON.stringify(safeError)}`);
+  }
 
   let fullText = "";
 
@@ -84,7 +94,7 @@ exports.OpenAIStream = async (messages, onDelta) => {
             fullText += delta;
             onDelta?.(delta);
           }
-        } catch (e) {
+        } catch {
           // ignore malformed keepalive chunks
         }
       }

@@ -3,8 +3,10 @@ const router = express.Router();
 const {
   getAiUploadUrl,
   handleChat,
-  handleChatSSE
-//  getCommunity,
+  handleChatSSE,
+  renameChatTitle,
+  getHistory,
+  getHistoryById
 } = require("../controller/ai");
 const { authenticate } = require("../middleware/auth");
 
@@ -14,6 +16,10 @@ router.post("/test", authenticate, handleChat);
 
 router.post("/chat", authenticate, handleChatSSE);
 
-// router.get("/my-community", authenticate, getCommunity);
+router.get("/history", authenticate, getHistory);
+
+router.get("/history/:id", authenticate, getHistoryById);
+
+router.patch("/title/:id", authenticate, renameChatTitle);
 
 module.exports = router;
