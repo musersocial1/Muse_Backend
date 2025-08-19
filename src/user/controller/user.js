@@ -646,8 +646,8 @@ exports.googleAuth = async (req, res) => {
     if (user) {
       let updated = false;
 
-      if (!user.authProvider) {
-        user.authProvider = "google";
+      if (!user.signUpMode) {
+        user.signUpMode = "google";
         updated = true;
       }
 
