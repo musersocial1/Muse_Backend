@@ -738,6 +738,14 @@ exports.googleAuth = async (req, res) => {
       process.env.JWT_SECRET
     );
 
+    const isProfileIncomplete =
+      !user.phoneNumber ||
+      !user.gender ||
+      !user.dateOfBirth ||
+      !user.accountType ||
+      !user.interests ||
+      !user.profileCompleted;
+
     /*const refreshToken = jwt.sign(
       { id: user._id, role: user.role },
       process.env.REFRESH_TOKEN,
