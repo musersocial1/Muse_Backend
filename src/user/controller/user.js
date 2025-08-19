@@ -911,7 +911,7 @@ exports.verifyLogin = async (req, res) => {
     if (record.code !== code)
       return res.status(400).json({ error: "Invalid verification code." });
 
-    if (Date.now() > record.expiry)
+    if (Date.now() > record.expiresAt)
       return res.status(400).json({ error: "Verification code expired." });
 
     await VerificationCode.deleteMany({ email });
